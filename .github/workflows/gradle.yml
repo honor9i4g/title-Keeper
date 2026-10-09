@@ -1,0 +1,35 @@
+name: Java CI with Gradle
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin' # or 'adopt' if temurin doesn't support 25 yet
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10' # Specify your Gradle version if needed
+
+      - name: Grant execute permission for gradlew
+        # This step ensures gradlew is executable on the runner, 
+        # complementing the git update-index fix for Windows/bat files
+        run: chmod +x ./gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build   

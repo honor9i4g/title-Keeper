@@ -1,0 +1,33 @@
+name: TitleKeeper
+version: 1.6.0
+main: me.titlekeeper.TitleKeeperPlugin
+api-version: '26.3'
+softdepend: [LuckPerms]
+description: Automatic player titles, badges, hover descriptions and timed LuckPerms grants.
+
+permissions:
+  titlekeeper.admin:
+    description: Grants access to /titlekeeper give, remove and reload
+    default: op
+    children:
+      titlekeeper.command: true
+
+  titlekeeper.command:
+    description: Allows using the base /titlekeeper command
+    default: true
+
+  titlekeeper.title.owner:
+    description: Grants Owner title
+    default: false
+
+  titlekeeper.title.admin:
+    description: Grants Admin title
+    default: false
+
+  titlekeeper.title.vip:
+    description: Grants VIP title (7 days by default)
+    default: false
+
+  titlekeeper.title.default:
+    description: Grants default Member title
+    default: true
