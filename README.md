@@ -125,4 +125,4 @@ These are potential improvements and are not promises of features already implem
 
 **Thank you for checking out Title-Keeper!** 🎉
 
-If you find a bug or have an idea for an improvement, consider opening an issue in the GitHub repository or or click on [Issue](https://github.com/honor9i4g/title-Keeper/issues/new).
+If you find a bug or have an idea for an improvement, consider opening an issue in the GitHub repository or click on [Issue](https://github.com/honor9i4g/title-Keeper/issues/new).
