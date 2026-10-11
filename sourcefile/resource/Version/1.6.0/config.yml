@@ -1,0 +1,23 @@
+# A /joke claim must be written in chat as: "I have <number> <item>".
+# Example: "I have 0 diamonds"
+# A /joke claim must be written in chat as: "I have <number> <item>".
+# Example: "I have 0 diamonds"
+joke-window-seconds: 60
+fox-clear-after-days: 3
+absent-after-days: 60
+absent-clear-login-days: 3
+griefer-unprovoked-kills: 10
+griefer-combat-window-seconds: 30
+
+# Cushion / Cozy Status Configuration
+cozy-permanent: false
+cozy-duration-days: 3
+# TitleKeeper Main Configuration
+
+settings:
+  # Enable debugging logs in the server console
+  debug: false
+
+messages:
+  no-permission: "<red>You do not have permission to execute this command!</red>"
+  reload-success: "<green>TitleKeeper configuration and custom titles reloaded!</green>"
