@@ -4,7 +4,7 @@ plugins {
 
 
 group = "me.titlekeeper"
-version = "1.6.0"
+version = "1.7.0"
 
 
 repositories {
@@ -30,7 +30,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.register<Zip>("resourcePackZip") {
-    archiveFileName.set("TitleKeeper-Badges-${project.version}.zip")
+    archiveFileName.set("TitleKeeper-Badges-1.4.zip")
     destinationDirectory.set(layout.buildDirectory.dir("libs"))
     from("resource-pack")
 }

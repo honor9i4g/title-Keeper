@@ -4,7 +4,7 @@
 
 The project continues to improve with new features, expanded badge collections, compatibility updates, and bug fixes.
 
-> 🚀 **Current Version: 1.6.0**
+> 🚀 **Current Version: 1.7.0**
 
 ---
 
@@ -36,11 +36,15 @@ Follow these general steps to install Title-Keeper:
 
 ## Resource pack
 
-Plain-text or emoji values in `custom-titles.yml` work without a resource pack. Badge icons configured with private-use characters such as `\ue000` use the custom `titlekeeper:badges` font and require the pack on each client. Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.6.0.zip`; players can install it directly, or the server owner can host it and set its URL in `server.properties`.
+Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`. Copy the ZIP into `plugins/TitleKeeper/` and set `resource-pack.url` in `plugins/TitleKeeper/config.yml` to its public HTTP(S) URL. TitleKeeper only adds badges after the server pack file is present and each player successfully loads it. Otherwise, the title remains, the badge is omitted, and the player is notified.
 
 ---
 
 ## 📦 Version History
+
+### 🔹 Version 1.7.0
+- Added server-side resource-pack checks and per-player load tracking for badges.
+- Badges are omitted with a notice when the pack is missing or not loaded.
 
 ### 🔹 Version 1.0.0
 - Introduced the project with built-in automatic titles.
@@ -123,7 +127,7 @@ These are potential improvements and are not promises of features already implem
 ## 📜 Project Information
 
 - **Project Name:** Title-Keeper
-- **Current Version:** 1.6.0
+- **Current Version:** 1.7.0
 - **Main Purpose:** Minecraft titles and badge customization
 - **Repository:** [honor9i4g/title-Keeper](https://github.com/honor9i4g/title-Keeper)
 

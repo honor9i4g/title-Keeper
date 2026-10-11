@@ -22,6 +22,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Scoreboard;
@@ -29,20 +30,34 @@ import org.bukkit.scoreboard.ScoreboardManager;
 import org.bukkit.scoreboard.Team;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class TitleKeeperPlugin extends JavaPlugin implements Listener, BasicCommand {
 
+    private static final UUID BADGE_RESOURCE_PACK_ID = UUID.nameUUIDFromBytes(
+            "titlekeeper:badges".getBytes(StandardCharsets.UTF_8));
     private File customTitlesFile;
     private FileConfiguration customTitlesConfig;
+    private File badgeResourcePackFile;
+    private String badgeResourcePackUrl;
+    private String badgeResourcePackHash;
+    private volatile boolean badgeResourcePackAvailable;
 
     // Temporary permission attachments (fallback when LuckPerms is absent)
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
+    private final Map<UUID, Boolean> badgePackLoaded = new ConcurrentHashMap<>();
 
     // when_block cooldowns: "<uuid>:<material>" -> expiry millis (-1 = permanent)
     private final Map<String, Long> blockCooldowns = new HashMap<>();
@@ -51,11 +66,13 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     public void onEnable() {
         saveDefaultConfig();
         createCustomTitlesConfig();
+        configureBadgeResourcePack();
 
         getServer().getPluginManager().registerEvents(this, this);
         this.registerCommand("titlekeeper", this);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
+            requestBadgeResourcePack(player);
             refreshPlayer(player);
         }
 
@@ -79,6 +96,7 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         }
         attachments.clear();
         blockCooldowns.clear();
+        badgePackLoaded.clear();
     }
 
     // --- CONFIGURATION MANAGEMENT ---
@@ -96,12 +114,59 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     }
 
     public void reloadCustomTitlesConfig() {
+        reloadConfig();
+        configureBadgeResourcePack();
         if (customTitlesFile == null) {
             customTitlesFile = new File(getDataFolder(), "custom-titles.yml");
         }
         customTitlesConfig = YamlConfiguration.loadConfiguration(customTitlesFile);
         for (Player player : Bukkit.getOnlinePlayers()) {
+            requestBadgeResourcePack(player);
             refreshPlayer(player);
+        }
+    }
+
+    private void configureBadgeResourcePack() {
+        String fileName = getConfig().getString("resource-pack.file", "TitleKeeper-Badges-1.4.zip");
+        badgeResourcePackFile = new File(getDataFolder(), fileName);
+        badgeResourcePackUrl = getConfig().getString("resource-pack.url", "").trim();
+        badgeResourcePackAvailable = false;
+        badgeResourcePackHash = null;
+        badgePackLoaded.clear();
+
+        if (!badgeResourcePackFile.isFile()) {
+            getLogger().warning("No badge resource pack found at " + badgeResourcePackFile.getPath()
+                    + ". Badges will not be added.");
+            return;
+        }
+        if (!badgeResourcePackUrl.startsWith("https://") && !badgeResourcePackUrl.startsWith("http://")) {
+            getLogger().warning("No valid badge resource pack URL is configured. Badges will not be added.");
+            return;
+        }
+
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-1").digest(Files.readAllBytes(badgeResourcePackFile.toPath()));
+            badgeResourcePackHash = HexFormat.of().formatHex(hash);
+            badgeResourcePackAvailable = true;
+        } catch (IOException | NoSuchAlgorithmException exception) {
+            getLogger().warning("Could not read the badge resource pack: " + exception.getMessage()
+                    + ". Badges will not be added.");
+        }
+    }
+
+    private void requestBadgeResourcePack(Player player) {
+        badgePackLoaded.put(player.getUniqueId(), false);
+        if (!badgeResourcePackAvailable) {
+            player.sendMessage(Component.text("No resource pack is available. Badges will not be added.", NamedTextColor.RED));
+            return;
+        }
+
+        try {
+            player.setResourcePack(BADGE_RESOURCE_PACK_ID, badgeResourcePackUrl, badgeResourcePackHash,
+                    Component.text("Load the TitleKeeper badge pack to display badge icons."), false);
+        } catch (RuntimeException exception) {
+            getLogger().warning("Could not send the badge resource pack to " + player.getName() + ": " + exception.getMessage());
+            player.sendMessage(Component.text("No resource pack is available. Badges will not be added.", NamedTextColor.RED));
         }
     }
 
@@ -278,12 +343,32 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
+        requestBadgeResourcePack(event.getPlayer());
         refreshPlayer(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onBadgeResourcePackStatus(PlayerResourcePackStatusEvent event) {
+        if (!BADGE_RESOURCE_PACK_ID.equals(event.getID())) return;
+
+        Player player = event.getPlayer();
+        if (event.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) {
+            badgePackLoaded.put(player.getUniqueId(), true);
+            refreshPlayer(player);
+            return;
+        }
+        if (event.getStatus() == PlayerResourcePackStatusEvent.Status.ACCEPTED
+                || event.getStatus() == PlayerResourcePackStatusEvent.Status.DOWNLOADED) return;
+
+        badgePackLoaded.put(player.getUniqueId(), false);
+        refreshPlayer(player);
+        player.sendMessage(Component.text("Resource pack not loaded. Badges will not be added.", NamedTextColor.RED));
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         attachments.remove(event.getPlayer().getUniqueId());
+        badgePackLoaded.remove(event.getPlayer().getUniqueId());
 
         try {
             ScoreboardManager manager = Bukkit.getScoreboardManager();
@@ -470,11 +555,19 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
                 String hexColor = config.getString("titles." + key + ".color", "#FFFFFF");
                 String description = config.getString("titles." + key + ".description", "");
 
-                return new PlayerRecord(title, badge, parseColor(hexColor), description);
+                PlayerRecord record = new PlayerRecord(title, badge, parseColor(hexColor), description);
+                return badgeResourcePackLoaded(player) ? record
+                        : new PlayerRecord(record.title(), "", record.color(), record.description());
             }
         }
 
-        return PlayerRecord.DEFAULT;
+        return badgeResourcePackLoaded(player) ? PlayerRecord.DEFAULT
+                : new PlayerRecord(PlayerRecord.DEFAULT.title(), "", PlayerRecord.DEFAULT.color(),
+                PlayerRecord.DEFAULT.description());
+    }
+
+    private boolean badgeResourcePackLoaded(Player player) {
+        return badgeResourcePackAvailable && Boolean.TRUE.equals(badgePackLoaded.get(player.getUniqueId()));
     }
 
     private TextColor parseColor(String hex) {

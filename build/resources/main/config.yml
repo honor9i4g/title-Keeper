@@ -21,3 +21,7 @@ settings:
 messages:
   no-permission: "<red>You do not have permission to execute this command!</red>"
   reload-success: "<green>TitleKeeper configuration and custom titles reloaded!</green>"
+
+resource-pack:
+  file: "TitleKeeper-Badges-1.7.0.zip"
+  url: ""
