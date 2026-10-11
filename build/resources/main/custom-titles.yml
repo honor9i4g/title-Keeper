@@ -1,0 +1,68 @@
+# custom-titles.yml
+# Each entry under 'titles:' maps to a rank.
+# The plugin checks them in YAML order and picks the FIRST match.
+# → Put most-specific ranks (owner, admin) FIRST, default LAST.
+# If Wanted o Add Custom Title Add this Witout The First #s
+# (down in Titles)
+# yourtitle:
+#  permission: "titlekeeper.title.yourtitle"
+#  title: "Owner"
+#  badge: "look at the badges.json file in resource pack"
+#  color: "add your own hex code of colour"
+#  duration: add any like this 1s/1m/1h/1d
+# settings:
+#  when_block:
+#   touched:true/false if pick is false 
+
+titles:
+  owner:
+    permission: "titlekeeper.title.owner"
+    title: "Owner"
+    badge: "\ue000"
+    color: "#EFBF04"
+    duration: perm
+    description: "Server owner."
+    settings:
+      when_block:
+        block: "minecraft:diamond_block"
+        touched: true
+        picked: false
+
+  admin:
+    permission: "titlekeeper.title.admin"
+    title: "Admin"
+    badge: "\ue001"
+    color: "#FFAA00"
+    duration: perm
+    description: "Server administrator."
+    settings:
+      when_block:
+        block: "minecraft:emerald_block"
+        touched: true
+        picked: false
+
+  vip:
+    permission: "titlekeeper.title.vip"
+    title: "VIP"
+    badge: "\ue002"
+    color: "#55FFFF"
+    duration: 7d
+    description: "hello i am descripting ur title when u touched or pecked a item or block"
+    settings:
+      when_block:
+        block: "minecraft:gold_block"
+        touched: true
+        picked: false
+
+  default:
+    permission: "titlekeeper.title.default"
+    title: "Member"
+    badge: "\ue000"
+    color: "#FFFFFF"
+    duration: perm
+    description: "Regular player."
+    settings:
+      when_block:
+        block: "minecraft:stone"
+        touched: true
+        picked: false

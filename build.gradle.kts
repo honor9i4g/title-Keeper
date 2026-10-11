@@ -1,28 +1,25 @@
+
 plugins {
     java
+    `maven-publish`
 }
-
 
 group = "me.titlekeeper"
 version = "1.7.0"
-
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
-
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.3.build.+")
     compileOnly("net.luckperms:api:5.5")
 }
 
-
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
-
 
 tasks.withType<JavaCompile>().configureEach {
     options.release.set(25)
@@ -37,4 +34,30 @@ tasks.register<Zip>("resourcePackZip") {
 
 tasks.named("build") {
     dependsOn("resourcePackZip")
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("gpr") {
+            from(components["java"])
+            groupId = "me.titlekeeper"
+            artifactId = "title-keeper"
+            version = "1.7.0"
+        }
+    }
+
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri(
+                "https://maven.pkg.github.com/honor9i4g/title-Keeper"
+            )
+            credentials {
+                username = providers.gradleProperty("gpr.user").orNull
+                    ?: System.getenv("GITHUB_ACTOR")
+                password = providers.gradleProperty("gpr.key").orNull
+                    ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
 }
