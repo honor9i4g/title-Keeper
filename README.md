@@ -34,6 +34,10 @@ Follow these general steps to install Title-Keeper:
 
 **Important:** Check the requirements for your specific version before installing. Versions 1.2.0 through 1.5.0 are marked as requiring ZIP files in the project notes.
 
+## Resource pack
+
+Plain-text or emoji values in `custom-titles.yml` work without a resource pack. Badge icons configured with private-use characters such as `\ue000` use the custom `titlekeeper:badges` font and require the pack on each client. Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.6.0.zip`; players can install it directly, or the server owner can host it and set its URL in `server.properties`.
+
 ---
 
 ## 📦 Version History

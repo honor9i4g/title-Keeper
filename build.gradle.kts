@@ -28,3 +28,13 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(25)
     options.encoding = "UTF-8"
 }
+
+tasks.register<Zip>("resourcePackZip") {
+    archiveFileName.set("TitleKeeper-Badges-${project.version}.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    from("resource-pack")
+}
+
+tasks.named("build") {
+    dependsOn("resourcePackZip")
+}

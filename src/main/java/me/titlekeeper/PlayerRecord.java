@@ -24,7 +24,11 @@ public record PlayerRecord(
 
     public Component badgeComponent() {
         if (badgeChar.isEmpty()) return Component.empty();
-        return Component.text(badgeChar).font(BADGE_FONT).color(color);
+        Component badge = Component.text(badgeChar).color(color);
+        if (badgeChar.codePoints().allMatch(codePoint -> Character.getType(codePoint) == Character.PRIVATE_USE)) {
+            badge = badge.font(BADGE_FONT);
+        }
+        return badge;
     }
 
     public Component titleComponent() {
