@@ -42,9 +42,6 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 
 ## 📦 Version History
 
-### 🔹 Version 1.7.0
-- Added server-side resource-pack checks and per-player load tracking for badges.
-- Badges are omitted with a notice when the pack is missing or not loaded.
 
 ### 🔹 Version 1.0.0
 - Introduced the project with built-in automatic titles.
@@ -74,6 +71,11 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - Fixed a plugin recognition issue.
 - Corrected a typo in `plugin.yml` that caused the plugin not to be recognized properly.
 - Included a fix based on the issue identified with help from DoodleworldOfficial.
+
+### 🔹 Version 1.7.0
+- Added server-side resource-pack checks and per-player load tracking for badges.
+- Badges are omitted with a notice when the pack is missing or not loaded.
+
 
 ---
 
