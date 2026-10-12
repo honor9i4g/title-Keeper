@@ -3,7 +3,7 @@
   "component": {
     "group": "me.titlekeeper",
     "module": "title-keeper",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -25,8 +25,8 @@
       },
       "files": [
         {
-          "name": "title-keeper-1.7.0.jar",
-          "url": "title-keeper-1.7.0.jar",
+          "name": "title-keeper-1.7.1.jar",
+          "url": "title-keeper-1.7.1.jar",
           "size": 17739,
           "sha512": "8355827335614efc5639904cb1b797c2f743037b4e32e867697c1292c7f7c34ce3cb7045be51c4ca1c15f807801b7813dbf140082704a43f93147f80d64247ec",
           "sha256": "af5f49d26aa0a5c7ec939ca7e3405e4460277623ee73a46809604266a05d40f4",
@@ -46,8 +46,8 @@
       },
       "files": [
         {
-          "name": "title-keeper-1.7.0.jar",
-          "url": "title-keeper-1.7.0.jar",
+          "name": "title-keeper-1.7.1.jar",
+          "url": "title-keeper-1.7.1.jar",
           "size": 17739,
           "sha512": "8355827335614efc5639904cb1b797c2f743037b4e32e867697c1292c7f7c34ce3cb7045be51c4ca1c15f807801b7813dbf140082704a43f93147f80d64247ec",
           "sha256": "af5f49d26aa0a5c7ec939ca7e3405e4460277623ee73a46809604266a05d40f4",

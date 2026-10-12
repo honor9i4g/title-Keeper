@@ -1,11 +1,12 @@
 
+
 plugins {
     java
     `maven-publish`
 }
 
 group = "me.titlekeeper"
-version = "1.7.0"
+version = "1.7.1"
 
 repositories {
     mavenCentral()
@@ -42,7 +43,7 @@ publishing {
             from(components["java"])
             groupId = "me.titlekeeper"
             artifactId = "title-keeper"
-            version = "1.7.0"
+            version = project.version.toString()
         }
     }
 
@@ -52,9 +53,11 @@ publishing {
             url = uri(
                 "https://maven.pkg.github.com/honor9i4g/title-Keeper"
             )
+
             credentials {
                 username = providers.gradleProperty("gpr.user").orNull
                     ?: System.getenv("GITHUB_ACTOR")
+
                 password = providers.gradleProperty("gpr.key").orNull
                     ?: System.getenv("GITHUB_TOKEN")
             }
