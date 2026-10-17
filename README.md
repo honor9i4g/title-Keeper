@@ -85,9 +85,7 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - added GUI for human friendly reactions
 - added /titlekeeper menu command to open GUI Menu
 
-## 🛠️ Requirements
-
-Requirements may vary depending on the version you choose.
+## 🛠️ RequirementsRequirements may vary depending on the version you choose.
 
 - A compatible Minecraft server or environment.
 - The appropriate project files for your selected version.
@@ -135,7 +133,7 @@ These are potential improvements and are not promises of features already implem
 ## 📜 Project Information
 
 - **Project Name:** Title-Keeper
-- **Current Version:** 1.7.0
+- **Current Version:** 1.7.1
 - **Main Purpose:** Minecraft titles and badge customization
 - **Repository:** [honor9i4g/title-Keeper](https://github.com/honor9i4g/title-Keeper)
 
