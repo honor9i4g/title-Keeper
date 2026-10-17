@@ -208,8 +208,9 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     public void execute(CommandSourceStack source, String[] args) {
         CommandSender sender = source.getSender();
 
-        // /titlekeeper or /titlekeeper gui
-        if (args.length == 0 || (args.length == 1 && args[0].equalsIgnoreCase("gui"))) {
+        // /titlekeeper, /titlekeeper gui, or /titlekeeper menu
+        if (args.length == 0 || (args.length == 1
+            && (args[0].equalsIgnoreCase("gui") || args[0].equalsIgnoreCase("menu")))) {
             if (!(sender instanceof Player player)) {
                 sender.sendMessage(Component.text("Only players can open the TitleKeeper GUI.", NamedTextColor.RED));
                 return;
