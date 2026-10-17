@@ -4,7 +4,7 @@
 
 The project continues to improve with new features, expanded badge collections, compatibility updates, and bug fixes.
 
-> 🚀 **Current Version: 1.7.0**
+> 🚀 **Current Version: 1.7.1**
 
 ---
 
@@ -76,8 +76,13 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - Added server-side resource-pack checks and per-player load tracking for badges.
 - Badges are omitted with a notice when the pack is missing or not loaded.
 
-
+### 🔹 Version 1.7.1
+- new bug fixes
 ---
+
+## Betas
+### 🔹 Version 1.8.0
+- added GUI for human friendly reactions
 
 ## 🛠️ Requirements
 
