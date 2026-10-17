@@ -3,7 +3,7 @@
   "component": {
     "group": "me.titlekeeper",
     "module": "title-keeper",
-    "version": "1.7.1",
+    "version": "1.8.0-beta",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -25,13 +25,13 @@
       },
       "files": [
         {
-          "name": "title-keeper-1.7.1.jar",
-          "url": "title-keeper-1.7.1.jar",
-          "size": 17739,
-          "sha512": "8355827335614efc5639904cb1b797c2f743037b4e32e867697c1292c7f7c34ce3cb7045be51c4ca1c15f807801b7813dbf140082704a43f93147f80d64247ec",
-          "sha256": "af5f49d26aa0a5c7ec939ca7e3405e4460277623ee73a46809604266a05d40f4",
-          "sha1": "78f0c5bc49d5f4a1e30f85ce1f4daa837b16fad0",
-          "md5": "d6d3c92c24fe6472f63a45863b37fbd8"
+          "name": "title-keeper-1.8.0-beta.jar",
+          "url": "title-keeper-1.8.0-beta.jar",
+          "size": 33354,
+          "sha512": "0eab3bc7061b6341a0b3dabfd59868334f68f09defab7165ee1f5dbfc24720826f61b2886b36b499d8786b1ac1848c2bd3a06c3e433da61e845f633f7d35bb40",
+          "sha256": "4c845522dd444fac49dbbac030e9423e3a9124b901672fdafbe1f6d5bcc5debd",
+          "sha1": "25ee61bccb5649b526f77b5eaa8d142e06662011",
+          "md5": "cf3d7b60d2e9be832c75acff317b45b2"
         }
       ]
     },
@@ -46,13 +46,13 @@
       },
       "files": [
         {
-          "name": "title-keeper-1.7.1.jar",
-          "url": "title-keeper-1.7.1.jar",
-          "size": 17739,
-          "sha512": "8355827335614efc5639904cb1b797c2f743037b4e32e867697c1292c7f7c34ce3cb7045be51c4ca1c15f807801b7813dbf140082704a43f93147f80d64247ec",
-          "sha256": "af5f49d26aa0a5c7ec939ca7e3405e4460277623ee73a46809604266a05d40f4",
-          "sha1": "78f0c5bc49d5f4a1e30f85ce1f4daa837b16fad0",
-          "md5": "d6d3c92c24fe6472f63a45863b37fbd8"
+          "name": "title-keeper-1.8.0-beta.jar",
+          "url": "title-keeper-1.8.0-beta.jar",
+          "size": 33354,
+          "sha512": "0eab3bc7061b6341a0b3dabfd59868334f68f09defab7165ee1f5dbfc24720826f61b2886b36b499d8786b1ac1848c2bd3a06c3e433da61e845f633f7d35bb40",
+          "sha256": "4c845522dd444fac49dbbac030e9423e3a9124b901672fdafbe1f6d5bcc5debd",
+          "sha1": "25ee61bccb5649b526f77b5eaa8d142e06662011",
+          "md5": "cf3d7b60d2e9be832c75acff317b45b2"
         }
       ]
     }

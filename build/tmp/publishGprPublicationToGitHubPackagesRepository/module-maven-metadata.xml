@@ -3,12 +3,13 @@
   <groupId>me.titlekeeper</groupId>
   <artifactId>title-keeper</artifactId>
   <versioning>
-    <latest>1.7.1</latest>
-    <release>1.7.1</release>
+    <latest>1.8.0-beta</latest>
+    <release>1.8.0-beta</release>
     <versions>
       <version>1.7.0</version>
       <version>1.7.1</version>
+      <version>1.8.0-beta</version>
     </versions>
-    <lastUpdated>20261013110755</lastUpdated>
+    <lastUpdated>20261017085645</lastUpdated>
   </versioning>
 </metadata>
