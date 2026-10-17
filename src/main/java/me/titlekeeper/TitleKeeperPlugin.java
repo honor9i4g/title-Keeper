@@ -4,6 +4,7 @@ import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
@@ -50,6 +51,8 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
             "titlekeeper:badges".getBytes(StandardCharsets.UTF_8));
     private File customTitlesFile;
     private FileConfiguration customTitlesConfig;
+    private File playerPreferencesFile;
+    private FileConfiguration playerPreferencesConfig;
     private File badgeResourcePackFile;
     private String badgeResourcePackUrl;
     private String badgeResourcePackHash;
@@ -61,15 +64,18 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
 
     // when_block cooldowns: "<uuid>:<material>" -> expiry millis (-1 = permanent)
     private final Map<String, Long> blockCooldowns = new HashMap<>();
+    private TitleGui titleGui;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         createCustomTitlesConfig();
+        createPlayerPreferencesConfig();
         configureBadgeResourcePack();
 
         getServer().getPluginManager().registerEvents(this, this);
         this.registerCommand("titlekeeper", this);
+        this.titleGui = new TitleGui(this);
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             requestBadgeResourcePack(player);
@@ -109,6 +115,19 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         customTitlesConfig = YamlConfiguration.loadConfiguration(customTitlesFile);
     }
 
+    private void createPlayerPreferencesConfig() {
+        playerPreferencesFile = new File(getDataFolder(), "player-preferences.yml");
+        playerPreferencesConfig = YamlConfiguration.loadConfiguration(playerPreferencesFile);
+    }
+
+    private void savePlayerPreferencesConfig() {
+        try {
+            playerPreferencesConfig.save(playerPreferencesFile);
+        } catch (IOException exception) {
+            getLogger().warning("Could not save player-preferences.yml: " + exception.getMessage());
+        }
+    }
+
     public FileConfiguration getCustomTitlesConfig() {
         return this.customTitlesConfig;
     }
@@ -123,6 +142,14 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         for (Player player : Bukkit.getOnlinePlayers()) {
             requestBadgeResourcePack(player);
             refreshPlayer(player);
+        }
+    }
+
+    public void saveCustomTitlesConfig() {
+        try {
+            customTitlesConfig.save(customTitlesFile);
+        } catch (IOException exception) {
+            getLogger().warning("Could not save custom-titles.yml: " + exception.getMessage());
         }
     }
 
@@ -181,6 +208,20 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     public void execute(CommandSourceStack source, String[] args) {
         CommandSender sender = source.getSender();
 
+        // /titlekeeper or /titlekeeper gui
+        if (args.length == 0 || (args.length == 1 && args[0].equalsIgnoreCase("gui"))) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(Component.text("Only players can open the TitleKeeper GUI.", NamedTextColor.RED));
+                return;
+            }
+            if (!sender.hasPermission("titlekeeper.admin")) {
+                sender.sendMessage(Component.text("Only admins may open the TitleKeeper GUI.", NamedTextColor.RED));
+                return;
+            }
+            titleGui.openMain(player);
+            return;
+        }
+
         // /titlekeeper reload
         if (args.length > 0 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("titlekeeper.admin")) {
@@ -189,6 +230,31 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
             }
             reloadCustomTitlesConfig();
             sender.sendMessage(Component.text("TitleKeeper configuration reloaded!", NamedTextColor.GREEN));
+            return;
+        }
+
+        if (args.length > 0 && args[0].equalsIgnoreCase("badge")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(Component.text("Only players can change their badge setting.", NamedTextColor.RED));
+                return;
+            }
+            if (args.length == 1) {
+                sendBadgeChoices(player);
+                return;
+            }
+            String titleKey = findTitleKey(args[1]);
+            if (titleKey == null) {
+                player.sendMessage(Component.text("Unknown title key: " + args[1], NamedTextColor.RED));
+                return;
+            }
+            String permission = customTitlesConfig.getString("titles." + titleKey + ".permission");
+            if (permission == null || !player.hasPermission(permission)) {
+                player.sendMessage(Component.text("You do not have that title.", NamedTextColor.RED));
+                return;
+            }
+            boolean equipped = selectOrToggleTitleBadge(player, titleKey);
+            player.sendMessage(Component.text("Badge for " + titleKey + " " + (equipped ? "equipped." : "unequipped."),
+                    equipped ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
             return;
         }
 
@@ -268,6 +334,7 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
 
         // Usage
         sender.sendMessage(Component.text("/titlekeeper reload", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("/titlekeeper badge [title-key]", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/titlekeeper give <title> <player> [duration]", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("/titlekeeper remove <player>", NamedTextColor.GRAY));
     }
@@ -386,6 +453,12 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
+        if (titleGui != null && titleGui.isAwaitingInput(player)) {
+            String input = PlainTextComponentSerializer.plainText().serialize(event.message());
+            event.setCancelled(true);
+            Bukkit.getScheduler().runTask(this, () -> titleGui.acceptInput(player, input));
+            return;
+        }
         PlayerRecord record = getPlayerRecord(player);
 
         Component chatPrefix = record.leftPrefix()
@@ -545,25 +618,85 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         FileConfiguration config = getCustomTitlesConfig();
 
         if (config.isConfigurationSection("titles")) {
-            for (String key : config.getConfigurationSection("titles").getKeys(false)) {
-                String permission = config.getString("titles." + key + ".permission");
-                if (permission == null || permission.isBlank()) continue;
-                if (!player.hasPermission(permission)) continue;
-
-                String title = config.getString("titles." + key + ".title", "Member");
-                String badge = config.getString("titles." + key + ".badge", "\ue000");
-                String hexColor = config.getString("titles." + key + ".color", "#FFFFFF");
-                String description = config.getString("titles." + key + ".description", "");
-
-                PlayerRecord record = new PlayerRecord(title, badge, parseColor(hexColor), description);
-                return badgeResourcePackLoaded(player) ? record
-                        : new PlayerRecord(record.title(), "", record.color(), record.description());
+            ConfigurationSection titles = config.getConfigurationSection("titles");
+            String selectedKey = playerPreferencesConfig.getString(
+                    "players." + player.getUniqueId() + ".selected-title");
+            if (selectedKey != null && titles.isConfigurationSection(selectedKey)
+                    && hasTitlePermission(player, selectedKey)) {
+                return configuredPlayerRecord(player, selectedKey);
+            }
+            for (String key : titles.getKeys(false)) {
+                if (hasTitlePermission(player, key)) return configuredPlayerRecord(player, key);
             }
         }
 
         return badgeResourcePackLoaded(player) ? PlayerRecord.DEFAULT
                 : new PlayerRecord(PlayerRecord.DEFAULT.title(), "", PlayerRecord.DEFAULT.color(),
                 PlayerRecord.DEFAULT.description());
+    }
+
+    private boolean isTitleBadgeEquipped(Player player, String titleKey) {
+        String path = "players." + player.getUniqueId() + ".badges." + titleKey;
+        return playerPreferencesConfig.getBoolean(path, true);
+    }
+
+    private PlayerRecord configuredPlayerRecord(Player player, String key) {
+        String base = "titles." + key;
+        String title = customTitlesConfig.getString(base + ".title", "Member");
+        String badge = customTitlesConfig.getString(base + ".badge", "\ue000");
+        if (!isTitleBadgeEquipped(player, key)) badge = "";
+        String hexColor = customTitlesConfig.getString(base + ".color", "#FFFFFF");
+        String description = customTitlesConfig.getString(base + ".description", "");
+        PlayerRecord record = new PlayerRecord(title, badge, parseColor(hexColor), description);
+        return badgeResourcePackLoaded(player) ? record
+                : new PlayerRecord(record.title(), "", record.color(), record.description());
+    }
+
+    private boolean hasTitlePermission(Player player, String titleKey) {
+        String permission = customTitlesConfig.getString("titles." + titleKey + ".permission");
+        return permission != null && !permission.isBlank() && player.hasPermission(permission);
+    }
+
+    private boolean selectOrToggleTitleBadge(Player player, String titleKey) {
+        String playerPath = "players." + player.getUniqueId();
+        String selectedPath = playerPath + ".selected-title";
+        String path = "players." + player.getUniqueId() + ".badges." + titleKey;
+        boolean isSelected = titleKey.equalsIgnoreCase(playerPreferencesConfig.getString(selectedPath, ""));
+        boolean equipped = !isSelected || !isTitleBadgeEquipped(player, titleKey);
+        playerPreferencesConfig.set(selectedPath, titleKey);
+        playerPreferencesConfig.set(path, equipped);
+        savePlayerPreferencesConfig();
+        refreshPlayer(player);
+        return equipped;
+    }
+
+    private String findTitleKey(String requestedKey) {
+        if (!customTitlesConfig.isConfigurationSection("titles")) return null;
+        for (String key : customTitlesConfig.getConfigurationSection("titles").getKeys(false)) {
+            if (key.equalsIgnoreCase(requestedKey)) return key;
+        }
+        return null;
+    }
+
+    private void sendBadgeChoices(Player player) {
+        if (!customTitlesConfig.isConfigurationSection("titles")) {
+            player.sendMessage(Component.text("No configured titles are available.", NamedTextColor.YELLOW));
+            return;
+        }
+        boolean found = false;
+        for (String key : customTitlesConfig.getConfigurationSection("titles").getKeys(false)) {
+            String permission = customTitlesConfig.getString("titles." + key + ".permission");
+            if (permission == null || !player.hasPermission(permission)) continue;
+            found = true;
+            boolean selected = key.equalsIgnoreCase(playerPreferencesConfig.getString(
+                "players." + player.getUniqueId() + ".selected-title", ""));
+            String status = selected
+                ? (isTitleBadgeEquipped(player, key) ? "selected, badge equipped" : "selected, badge unequipped")
+                : "not selected";
+            player.sendMessage(Component.text(key + " (badge " + status + "): /titlekeeper badge " + key,
+                    NamedTextColor.AQUA));
+        }
+        if (!found) player.sendMessage(Component.text("You do not have any configured titles.", NamedTextColor.YELLOW));
     }
 
     private boolean badgeResourcePackLoaded(Player player) {
@@ -576,5 +709,19 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
             if (color != null) return color;
         }
         return NamedTextColor.WHITE;
+    }
+
+    /** Lets the GUI grant one configured title using LuckPerms when it is available. */
+    public boolean grantConfiguredTitle(Player target, String titleKey) {
+        if (!customTitlesConfig.isConfigurationSection("titles")) return false;
+        String base = "titles." + titleKey;
+        String permission = customTitlesConfig.getString(base + ".permission");
+        if (permission == null || permission.isBlank()) return false;
+        int seconds = parseDuration(customTitlesConfig.getString(base + ".duration", "perm"));
+        if (!applySecretLuckPermsGrant(target, permission, seconds)) {
+            grantTitle(target, permission);
+        }
+        refreshPlayer(target);
+        return true;
     }
 }
