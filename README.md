@@ -82,8 +82,9 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 
 ## Betas
 ### 🔹 Version 1.8.0
-- added GUI for human friendly reactions
+- added User friendly GUI
 - added /titlekeeper menu command to open GUI Menu
+- Added title selecter in GUI menu
 
 ## 🛠️ RequirementsRequirements may vary depending on the version you choose.
 
