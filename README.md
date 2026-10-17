@@ -32,7 +32,7 @@ Follow these general steps to install Title-Keeper:
 5. Restart the server or reload the plugin as recommended by its documentation.
 6. Test the title and badge features to make sure everything works correctly.
 
-**Important:** Check the requirements for your specific version before installing. Versions 1.2.0 through 1.5.0 are marked as requiring ZIP files in the project notes.
+**Important:** Check the requirements for your specific version before installing. Versions 1.2.0 and Up are marked as requiring ZIP files in the project notes.
 
 ## Resource pack
 
