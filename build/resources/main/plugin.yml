@@ -1,5 +1,5 @@
 name: TitleKeeper
-version: 1.7.0
+version: 1.8.0-beta
 main: me.titlekeeper.TitleKeeperPlugin
 api-version: '26.3'
 softdepend: [LuckPerms]
@@ -7,7 +7,7 @@ description: Automatic player titles, badges, hover descriptions and timed LuckP
 
 permissions:
   titlekeeper.admin:
-    description: Grants access to /titlekeeper give, remove and reload
+    description: Grants access to the TitleKeeper GUI and title management
     default: op
     children:
       titlekeeper.command: true
