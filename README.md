@@ -86,7 +86,8 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - added /titlekeeper menu command to open GUI Menu
 - Added title selecter in GUI menu
 
-## 🛠️ RequirementsRequirements may vary depending on the version you choose.
+## 🛠️Requirements
+Requirements may vary depending on the version you choose.
 
 - A compatible Minecraft server or environment.
 - The appropriate project files for your selected version.
