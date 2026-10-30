@@ -85,6 +85,12 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - added User friendly GUI
 - added /titlekeeper menu command to open GUI Menu
 - Added title selecter in GUI menu
+- Added a decorative control panel, title-list paging, settings reload, title creation, and title grants.
+
+Open the admin GUI with `/titlekeeper menu`. Use **Active Titles** to browse configured titles,
+**Create Title** to add one, **Give a Title** to grant one to an online player, and **Settings**
+to reload the title configuration. The menu controls are clickable and decorative footer panes
+are non-interactive.
 
 ## 🛠️Requirements
 Requirements may vary depending on the version you choose.

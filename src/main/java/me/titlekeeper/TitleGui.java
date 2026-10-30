@@ -12,11 +12,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +26,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Minecraft inventory UI for the TitleKeeper 1.8.0-beta Sigma Control Panel. */
 public final class TitleGui implements Listener {
@@ -40,40 +44,64 @@ public final class TitleGui implements Listener {
         MenuHolder holder = holder(Menu.MAIN, null);
         Inventory inventory = create(holder, Component.text("TitleKeeper | Sigma Control Panel", NamedTextColor.DARK_GRAY));
         fill(inventory, Material.GRAY_STAINED_GLASS_PANE, Component.empty());
-        inventory.setItem(11, item(Material.BOOK, "Active Titles", NamedTextColor.GOLD,
+        inventory.setItem(4, item(Material.NETHER_STAR, "TITLEKEEPER", NamedTextColor.GOLD,
+                "Sigma Control Panel", "Manage titles, badges and players."));
+        inventory.setItem(20, item(Material.BOOK, "Active Titles", NamedTextColor.GOLD,
                 "See every configured title.", "Click to open the title list."));
-        inventory.setItem(13, item(Material.ANVIL, "Create Title", NamedTextColor.GREEN,
+        inventory.setItem(22, item(Material.ANVIL, "Create Title", NamedTextColor.GREEN,
                 "Create a title with a name, permission and duration.", "Click to start a title draft."));
-        inventory.setItem(15, item(Material.NAME_TAG, "Give a Title", NamedTextColor.AQUA,
+        inventory.setItem(24, item(Material.NAME_TAG, "Give a Title", NamedTextColor.AQUA,
                 "Choose an online player, then grant a configured title."));
-        inventory.setItem(31, item(Material.NETHER_STAR, "Sigma Settings", NamedTextColor.LIGHT_PURPLE,
-                "TitleKeeper 1.8.0-beta", "Minecraft-style title control panel."));
+        inventory.setItem(40, item(Material.COMPARATOR, "Settings", NamedTextColor.LIGHT_PURPLE,
+                "Reload the title configuration."));
+        inventory.setItem(49, item(Material.BARRIER, "Close Menu", NamedTextColor.RED, "Close the control panel."));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
     private void openActive(Player player) {
-        MenuHolder holder = holder(Menu.ACTIVE, null);
+        openActive(player, 0);
+    }
+
+    private void openActive(Player player, int page) {
+        MenuHolder holder = holder(Menu.ACTIVE, null, page);
         Inventory inventory = create(holder, Component.text("TitleKeeper | Active Titles", NamedTextColor.GOLD));
         fill(inventory, Material.BLACK_STAINED_GLASS_PANE, Component.empty());
         ConfigurationSection titles = plugin.getCustomTitlesConfig().getConfigurationSection("titles");
-        if (titles == null || titles.getKeys(false).isEmpty()) {
+        List<String> keys = titles == null ? List.of() : new ArrayList<>(titles.getKeys(false));
+        if (keys.isEmpty()) {
             inventory.setItem(22, item(Material.BARRIER, "No titles configured", NamedTextColor.RED,
                     "Use Create Title to make the first one."));
         } else {
-            int slot = 0;
-            for (String key : titles.getKeys(false)) {
-                if (slot >= 45) break;
+            int start = page * 45;
+            int end = Math.min(start + 45, keys.size());
+            for (int index = start; index < end; index++) {
+                String key = keys.get(index);
                 String path = "titles." + key;
                 String title = plugin.getCustomTitlesConfig().getString(path + ".title", key);
                 String permission = plugin.getCustomTitlesConfig().getString(path + ".permission", "<unset>");
                 String duration = plugin.getCustomTitlesConfig().getString(path + ".duration", "perm");
                 String description = plugin.getCustomTitlesConfig().getString(path + ".description", "No description.");
-                inventory.setItem(slot++, item(Material.NAME_TAG, title,
+                inventory.setItem(index - start, item(Material.NAME_TAG, title,
                         color(plugin.getCustomTitlesConfig().getString(path + ".color", "#FFFFFF")),
                         "Key: " + key, "Permission: " + permission, "Duration: " + duration, description));
             }
+            if (page > 0) inventory.setItem(45, item(Material.ARROW, "Previous Page", NamedTextColor.YELLOW));
+            if (end < keys.size()) inventory.setItem(53, item(Material.ARROW, "Next Page", NamedTextColor.YELLOW));
         }
         inventory.setItem(49, item(Material.ARROW, "Back", NamedTextColor.YELLOW, "Return to the Sigma Control Panel."));
+        decorateFooter(inventory);
+        player.openInventory(inventory);
+    }
+
+    private void openSettings(Player player) {
+        MenuHolder holder = holder(Menu.SETTINGS, null);
+        Inventory inventory = create(holder, Component.text("TitleKeeper | Settings", NamedTextColor.LIGHT_PURPLE));
+        fill(inventory, Material.GRAY_STAINED_GLASS_PANE, Component.empty());
+        inventory.setItem(22, item(Material.WRITABLE_BOOK, "Reload Configuration", NamedTextColor.GREEN,
+                "Reload custom-titles.yml and refresh online players."));
+        inventory.setItem(49, item(Material.ARROW, "Back", NamedTextColor.YELLOW, "Return to the Sigma Control Panel."));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
@@ -99,6 +127,7 @@ public final class TitleGui implements Listener {
         inventory.setItem(34, item(Material.EMERALD, "CREATE TITLE", NamedTextColor.GREEN,
                 "Save this title into custom-titles.yml."));
         inventory.setItem(49, item(Material.ARROW, "Back", NamedTextColor.YELLOW, "Keep this draft and return."));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
@@ -121,6 +150,7 @@ public final class TitleGui implements Listener {
         inventory.setItem(48, item(Material.BARRIER, "Back to Draft", NamedTextColor.YELLOW));
         inventory.setItem(49, item(Material.MAP, "No Badge", NamedTextColor.RED, "Use no badge for this title."));
         if (end < 100) inventory.setItem(53, item(Material.ARROW, "Next Page", NamedTextColor.YELLOW));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
@@ -138,29 +168,39 @@ public final class TitleGui implements Listener {
             inventory.setItem(slot++, head);
         }
         inventory.setItem(49, item(Material.ARROW, "Back", NamedTextColor.YELLOW, "Return to the Sigma Control Panel."));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
     private void openGive(Player player, UUID targetId) {
+        openGive(player, targetId, 0);
+    }
+
+    private void openGive(Player player, UUID targetId, int page) {
         Player target = Bukkit.getPlayer(targetId);
         if (target == null) { openPlayers(player); return; }
-        MenuHolder holder = holder(Menu.GIVE, targetId);
+        MenuHolder holder = holder(Menu.GIVE, targetId, page);
         Inventory inventory = create(holder, Component.text("TitleKeeper | Give to " + target.getName(), NamedTextColor.AQUA));
         fill(inventory, Material.GRAY_STAINED_GLASS_PANE, Component.empty());
         ConfigurationSection titles = plugin.getCustomTitlesConfig().getConfigurationSection("titles");
         if (titles != null) {
-            int slot = 0;
-            for (String key : titles.getKeys(false)) {
-                if (slot >= 45) break;
+            List<String> keys = new ArrayList<>(titles.getKeys(false));
+            int start = page * 45;
+            int end = Math.min(start + 45, keys.size());
+            for (int index = start; index < end; index++) {
+                String key = keys.get(index);
                 String path = "titles." + key;
                 String title = plugin.getCustomTitlesConfig().getString(path + ".title", key);
                 String duration = plugin.getCustomTitlesConfig().getString(path + ".duration", "perm");
-                inventory.setItem(slot++, item(Material.NAME_TAG, title,
+                inventory.setItem(index - start, item(Material.NAME_TAG, title,
                         color(plugin.getCustomTitlesConfig().getString(path + ".color", "#FFFFFF")),
                         "Give to " + target.getName(), "Duration: " + duration, "Click to grant."));
             }
+            if (page > 0) inventory.setItem(45, item(Material.ARROW, "Previous Page", NamedTextColor.YELLOW));
+            if (end < keys.size()) inventory.setItem(53, item(Material.ARROW, "Next Page", NamedTextColor.YELLOW));
         }
         inventory.setItem(49, item(Material.ARROW, "Back", NamedTextColor.YELLOW, "Choose another player."));
+        decorateFooter(inventory);
         player.openInventory(inventory);
     }
 
@@ -172,8 +212,26 @@ public final class TitleGui implements Listener {
         if (event.getRawSlot() < 0 || event.getRawSlot() >= event.getView().getTopInventory().getSize()) return;
         int slot = event.getRawSlot();
         switch (holder.menu) {
-            case MAIN -> { if (slot == 11) openActive(player); else if (slot == 13) openCreate(player); else if (slot == 15) openPlayers(player); }
-            case ACTIVE -> { if (slot == 49) openMain(player); }
+            case MAIN -> {
+                if (slot == 20) openActive(player);
+                else if (slot == 22) openCreate(player);
+                else if (slot == 24) openPlayers(player);
+                else if (slot == 40) openSettings(player);
+                else if (slot == 49) player.closeInventory();
+            }
+            case ACTIVE -> {
+                if (slot == 49) openMain(player);
+                else if (slot == 45 && holder.page > 0) openActive(player, holder.page - 1);
+                else if (slot == 53) openActive(player, holder.page + 1);
+            }
+            case SETTINGS -> {
+                if (slot == 49) openMain(player);
+                else if (slot == 22) {
+                    plugin.reloadCustomTitlesConfig();
+                    player.sendMessage(Component.text("TitleKeeper configuration reloaded.", NamedTextColor.GREEN));
+                    openMain(player);
+                }
+            }
             case BADGES -> handleBadgeClick(player, holder, slot);
             case PLAYERS -> {
                 if (slot == 49) { openMain(player); return; }
@@ -184,19 +242,35 @@ public final class TitleGui implements Listener {
             }
             case GIVE -> {
                 if (slot == 49) { openPlayers(player); return; }
+                if (slot == 45 && holder.page > 0) { openGive(player, holder.target, holder.page - 1); return; }
+                if (slot == 53) { openGive(player, holder.target, holder.page + 1); return; }
                 ItemStack selected = event.getCurrentItem();
                 if (selected == null || selected.getType() != Material.NAME_TAG || holder.target == null) return;
                 Player target = Bukkit.getPlayer(holder.target);
                 if (target == null) { player.sendMessage(Component.text("That player is no longer online.", NamedTextColor.RED)); openPlayers(player); return; }
-                String titleKey = keyAt(slot);
+                String titleKey = keyAt(holder.page * 45 + slot);
                 if (titleKey != null && plugin.grantConfiguredTitle(target, titleKey)) {
                     player.sendMessage(Component.text("Granted " + titleKey + " to " + target.getName() + ".", NamedTextColor.GREEN));
                     target.sendMessage(Component.text("You received the " + titleKey + " title!", NamedTextColor.GOLD));
                 }
-                openGive(player, holder.target);
+                openGive(player, holder.target, holder.page);
             }
             case CREATE -> handleCreateClick(player, slot);
         }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onDrag(InventoryDragEvent event) {
+        if (event.getView().getTopInventory().getHolder() instanceof MenuHolder) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        UUID playerId = event.getPlayer().getUniqueId();
+        drafts.remove(playerId);
+        pendingInput.remove(playerId);
     }
 
     private void handleCreateClick(Player player, int slot) {
@@ -251,6 +325,14 @@ public final class TitleGui implements Listener {
         if (key.isEmpty()) { player.sendMessage(Component.text("Set a title name first.", NamedTextColor.RED)); return; }
         if (plugin.getCustomTitlesConfig().contains("titles." + key)) { player.sendMessage(Component.text("A title with that key already exists.", NamedTextColor.RED)); return; }
         if (color(draft.color) == null) { player.sendMessage(Component.text("Use a hex colour like #55FFFF.", NamedTextColor.RED)); return; }
+        if (!isValidDuration(draft.duration)) {
+            player.sendMessage(Component.text("Use a duration like perm, 7d, 4h, 30m or 10s.", NamedTextColor.RED));
+            return;
+        }
+        if (!draft.block.isBlank() && !isBlock(draft.block)) {
+            player.sendMessage(Component.text("Enter a valid block ID, such as minecraft:stone, or 'none'.", NamedTextColor.RED));
+            return;
+        }
         if (draft.permission.isBlank()) draft.permission = "titlekeeper.title." + key;
         String base = "titles." + key;
         plugin.getCustomTitlesConfig().set(base + ".permission", draft.permission);
@@ -264,24 +346,63 @@ public final class TitleGui implements Listener {
             plugin.getCustomTitlesConfig().set(base + ".settings.when_block.touched", true);
             plugin.getCustomTitlesConfig().set(base + ".settings.when_block.picked", false);
         }
-        plugin.saveCustomTitlesConfig();
+        if (!plugin.saveCustomTitlesConfig()) {
+            plugin.getCustomTitlesConfig().set("titles." + key, null);
+            player.sendMessage(Component.text("Could not save custom-titles.yml. The title was not created.", NamedTextColor.RED));
+            return;
+        }
         drafts.remove(player.getUniqueId());
         player.sendMessage(Component.text("Created '" + draft.title + "' with permission " + draft.permission + ".", NamedTextColor.GREEN));
         openActive(player);
     }
 
     private String keyAt(int slot) { ConfigurationSection titles = plugin.getCustomTitlesConfig().getConfigurationSection("titles"); return titles == null || slot < 0 || slot >= titles.getKeys(false).size() ? null : new ArrayList<>(titles.getKeys(false)).get(slot); }
+    private boolean isValidDuration(String duration) {
+        if (duration.equalsIgnoreCase("perm")) return true;
+        Matcher matcher = Pattern.compile("^(\\d+)\\s*([smhd])$", Pattern.CASE_INSENSITIVE).matcher(duration);
+        if (!matcher.matches()) return false;
+        try {
+            long amount = Long.parseLong(matcher.group(1));
+            long multiplier = switch (matcher.group(2).toLowerCase(Locale.ROOT)) {
+                case "s" -> 1;
+                case "m" -> 60;
+                case "h" -> 3600;
+                case "d" -> 86400;
+                default -> throw new IllegalStateException("Unexpected duration unit");
+            };
+            return amount > 0 && amount <= Integer.MAX_VALUE / multiplier;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
+    }
+    private boolean isBlock(String raw) {
+        String normalized = raw.toLowerCase(Locale.ROOT);
+        String id = normalized.contains(":") ? normalized : "minecraft:" + normalized;
+        Material material = Material.matchMaterial(id);
+        return material != null && material.isBlock();
+    }
     private MenuHolder holder(Menu menu, UUID target) { return new MenuHolder(menu, target, 0); }
     private MenuHolder holder(Menu menu, UUID target, int page) { return new MenuHolder(menu, target, page); }
     private Inventory create(MenuHolder holder, Component title) { Inventory inventory = Bukkit.createInventory(holder, 54, title); holder.inventory = inventory; return inventory; }
     private void fill(Inventory inventory, Material type, Component name) { for (int slot = 0; slot < inventory.getSize(); slot++) inventory.setItem(slot, item(type, name)); }
+    private void decorateFooter(Inventory inventory) {
+        Material[] accents = {
+                Material.BLACK_STAINED_GLASS_PANE, Material.ORANGE_STAINED_GLASS_PANE,
+                Material.BLACK_STAINED_GLASS_PANE, Material.ORANGE_STAINED_GLASS_PANE,
+                Material.BLACK_STAINED_GLASS_PANE
+        };
+        int[] slots = {46, 47, 50, 51, 52};
+        for (int index = 0; index < slots.length; index++) {
+            inventory.setItem(slots[index], item(accents[index], Component.empty()));
+        }
+    }
     private String value(String value, String fallback) { return value == null || value.isBlank() ? fallback : value; }
     private String key(String text) { return text == null ? "" : text.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_").replaceAll("^_|_$", ""); }
     private TextColor color(String raw) { return raw != null && raw.startsWith("#") ? TextColor.fromHexString(raw) : null; }
     private ItemStack item(Material material, String name, TextColor color, String... lore) { ItemStack item = new ItemStack(material); ItemMeta meta = item.getItemMeta(); meta.displayName(Component.text(name, color)); List<Component> lines = new ArrayList<>(); for (String line : lore) lines.add(Component.text(line, NamedTextColor.GRAY)); meta.lore(lines); item.setItemMeta(meta); return item; }
     private ItemStack item(Material material, Component name) { ItemStack item = new ItemStack(material); ItemMeta meta = item.getItemMeta(); meta.displayName(name); item.setItemMeta(meta); return item; }
     private ItemStack item(Material material, String name, NamedTextColor color, String... lore) { return item(material, name, (TextColor) color, lore); }
-    private enum Menu { MAIN, ACTIVE, CREATE, BADGES, PLAYERS, GIVE }
+    private enum Menu { MAIN, ACTIVE, SETTINGS, CREATE, BADGES, PLAYERS, GIVE }
     private enum DraftField { NAME("title name"), PERMISSION("permission node"), DURATION("time override"), COLOR("hex colour"), DESCRIPTION("description"), BLOCK("block trigger"); final String label; DraftField(String label) { this.label = label; } }
     private static final class DraftTitle { String title = ""; String permission = ""; String duration = "perm"; String badge = "\ue000"; String color = "#55FFFF"; String description = ""; String block = ""; }
     private static final class MenuHolder implements InventoryHolder { final Menu menu; final UUID target; final int page; Inventory inventory; MenuHolder(Menu menu, UUID target, int page) { this.menu = menu; this.target = target; this.page = page; } @Override public Inventory getInventory() { return inventory; } }

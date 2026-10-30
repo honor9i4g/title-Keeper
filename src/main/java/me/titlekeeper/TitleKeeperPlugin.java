@@ -145,11 +145,13 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         }
     }
 
-    public void saveCustomTitlesConfig() {
+    public boolean saveCustomTitlesConfig() {
         try {
             customTitlesConfig.save(customTitlesFile);
+            return true;
         } catch (IOException exception) {
             getLogger().warning("Could not save custom-titles.yml: " + exception.getMessage());
+            return false;
         }
     }
 
