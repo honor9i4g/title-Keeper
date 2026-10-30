@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "me.titlekeeper"
-version = "1.8.0-beta"
+version = "1.8.0"
 
 repositories {
     mavenCentral()

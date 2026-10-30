@@ -1,5 +1,5 @@
 name: TitleKeeper
-version: 1.8.0-beta
+version: 1.8.0
 main: me.titlekeeper.TitleKeeperPlugin
 api-version: '26.3'
 softdepend: [LuckPerms]

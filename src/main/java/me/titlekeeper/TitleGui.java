@@ -29,7 +29,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Minecraft inventory UI for the TitleKeeper 1.8.0-beta Sigma Control Panel. */
+/** Minecraft inventory UI for the TitleKeeper 1.8.0 Sigma Control Panel. */
 public final class TitleGui implements Listener {
     private final TitleKeeperPlugin plugin;
     private final Map<UUID, DraftTitle> drafts = new HashMap<>();

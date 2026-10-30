@@ -4,7 +4,7 @@
 
 The project continues to improve with new features, expanded badge collections, compatibility updates, and bug fixes.
 
-> 🚀 **Current Version: 1.7.1**
+> 🚀 **Current Version: 1.8.0**
 
 ---
 
@@ -80,12 +80,17 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`.
 - new bug fixes
 ---
 
-## Betas
 ### 🔹 Version 1.8.0
-- added User friendly GUI
-- added /titlekeeper menu command to open GUI Menu
-- Added title selecter in GUI menu
-- Added a decorative control panel, title-list paging, settings reload, title creation, and title grants.
+- Added the admin GUI, opened with `/titlekeeper menu`.
+- Added title browsing, creation, and grants to online players.
+- Added GUI pagination, configuration reload, and a decorative control panel.
+## Beta Leavers 🎯
+Version 1.8.0 
+- Left with PAtches of button Settings 
+- Added pagination for title lists and grants
+- Blocked item dragging
+- Improved title validation and save-error feedback.
+
 
 Open the admin GUI with `/titlekeeper menu`. Use **Active Titles** to browse configured titles,
 **Create Title** to add one, **Give a Title** to grant one to an online player, and **Settings**
@@ -141,7 +146,7 @@ These are potential improvements and are not promises of features already implem
 ## 📜 Project Information
 
 - **Project Name:** Title-Keeper
-- **Current Version:** 1.7.1
+- **Current Version:** 1.8.0
 - **Main Purpose:** Minecraft titles and badge customization
 - **Repository:** [honor9i4g/title-Keeper](https://github.com/honor9i4g/title-Keeper)
 
