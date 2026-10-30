@@ -1,5 +1,7 @@
 package me.titlekeeper;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.event.player.AsyncChatEvent;
@@ -22,6 +24,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.permissions.PermissionAttachment;
@@ -32,8 +35,15 @@ import org.bukkit.scoreboard.Team;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -42,6 +52,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,13 +66,16 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     private File playerPreferencesFile;
     private FileConfiguration playerPreferencesConfig;
     private File badgeResourcePackFile;
-    private String badgeResourcePackUrl;
     private String badgeResourcePackHash;
     private volatile boolean badgeResourcePackAvailable;
+    private HttpServer badgePackHttpServer;
+    private ExecutorService badgePackHttpExecutor;
+    private int badgePackHttpPort;
 
     // Temporary permission attachments (fallback when LuckPerms is absent)
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
     private final Map<UUID, Boolean> badgePackLoaded = new ConcurrentHashMap<>();
+    private final Map<UUID, String> playerConnectionHosts = new ConcurrentHashMap<>();
 
     // when_block cooldowns: "<uuid>:<material>" -> expiry millis (-1 = permanent)
     private final Map<String, Long> blockCooldowns = new HashMap<>();
@@ -103,6 +118,8 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         attachments.clear();
         blockCooldowns.clear();
         badgePackLoaded.clear();
+        playerConnectionHosts.clear();
+        stopBadgePackHttpServer();
     }
 
     // --- CONFIGURATION MANAGEMENT ---
@@ -156,30 +173,115 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     }
 
     private void configureBadgeResourcePack() {
-        String fileName = getConfig().getString("resource-pack.file", "TitleKeeper-Badges-1.4.zip");
-        badgeResourcePackFile = new File(getDataFolder(), fileName);
-        badgeResourcePackUrl = getConfig().getString("resource-pack.url", "").trim();
+        stopBadgePackHttpServer();
         badgeResourcePackAvailable = false;
         badgeResourcePackHash = null;
         badgePackLoaded.clear();
+
+        String fileName = getConfig().getString("resource-pack.file", "TitleKeeper-Badges-1.4.zip");
+        Path pluginDirectory = getDataFolder().toPath().toAbsolutePath().normalize();
+        Path packPath = pluginDirectory.resolve(fileName).normalize();
+        if (!packPath.startsWith(pluginDirectory)) {
+            getLogger().warning("The badge resource-pack file must be inside the TitleKeeper plugin folder.");
+            return;
+        }
+        badgeResourcePackFile = packPath.toFile();
 
         if (!badgeResourcePackFile.isFile()) {
             getLogger().warning("No badge resource pack found at " + badgeResourcePackFile.getPath()
                     + ". Badges will not be added.");
             return;
         }
-        if (!badgeResourcePackUrl.startsWith("https://") && !badgeResourcePackUrl.startsWith("http://")) {
-            getLogger().warning("No valid badge resource pack URL is configured. Badges will not be added.");
+
+        int port = getConfig().getInt("resource-pack.port", 8080);
+        if (port < 1 || port > 65535) {
+            getLogger().warning("resource-pack.port must be between 1 and 65535. Badges will not be added.");
             return;
         }
 
         try {
-            byte[] hash = MessageDigest.getInstance("SHA-1").digest(Files.readAllBytes(badgeResourcePackFile.toPath()));
-            badgeResourcePackHash = HexFormat.of().formatHex(hash);
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            try (InputStream input = Files.newInputStream(badgeResourcePackFile.toPath())) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = input.read(buffer)) != -1) {
+                    digest.update(buffer, 0, bytesRead);
+                }
+            }
+            badgeResourcePackHash = HexFormat.of().formatHex(digest.digest());
+            startBadgePackHttpServer(port);
             badgeResourcePackAvailable = true;
-        } catch (IOException | NoSuchAlgorithmException exception) {
-            getLogger().warning("Could not read the badge resource pack: " + exception.getMessage()
+        } catch (IOException exception) {
+            stopBadgePackHttpServer();
+            getLogger().warning("Could not start local badge resource-pack delivery: " + exception.getMessage()
                     + ". Badges will not be added.");
+        } catch (NoSuchAlgorithmException exception) {
+            getLogger().warning("Could not calculate the badge resource-pack hash: " + exception.getMessage()
+                    + ". Badges will not be added.");
+        }
+    }
+
+    private void startBadgePackHttpServer(int port) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        ExecutorService executor = Executors.newFixedThreadPool(2, task -> {
+            Thread thread = new Thread(task, "TitleKeeper-BadgePack");
+            thread.setDaemon(true);
+            return thread;
+        });
+        server.createContext("/titlekeeper-badges.zip", this::handleBadgePackRequest);
+        server.setExecutor(executor);
+        badgePackHttpServer = server;
+        badgePackHttpExecutor = executor;
+        badgePackHttpPort = port;
+        server.start();
+        getLogger().info("Serving badge resource pack on HTTP port " + port + ".");
+    }
+
+    private void stopBadgePackHttpServer() {
+        if (badgePackHttpServer != null) {
+            badgePackHttpServer.stop(0);
+            badgePackHttpServer = null;
+        }
+        if (badgePackHttpExecutor != null) {
+            badgePackHttpExecutor.shutdownNow();
+            badgePackHttpExecutor = null;
+        }
+    }
+
+    private void handleBadgePackRequest(HttpExchange exchange) throws IOException {
+        try {
+            if (!exchange.getRequestURI().getPath().equals("/titlekeeper-badges.zip")) {
+                exchange.sendResponseHeaders(404, -1);
+                return;
+            }
+            String method = exchange.getRequestMethod();
+            if (!method.equals("GET") && !method.equals("HEAD")) {
+                exchange.getResponseHeaders().set("Allow", "GET, HEAD");
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+            if (!badgeResourcePackFile.isFile()) {
+                exchange.sendResponseHeaders(404, -1);
+                return;
+            }
+
+            long fileSize = Files.size(badgeResourcePackFile.toPath());
+            exchange.getResponseHeaders().set("Content-Type", "application/zip");
+            exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+            exchange.getResponseHeaders().set("ETag", "\"" + badgeResourcePackHash + "\"");
+            exchange.getResponseHeaders().set("Content-Length", Long.toString(fileSize));
+            if (method.equals("HEAD")) {
+                exchange.sendResponseHeaders(200, -1);
+                return;
+            }
+
+            exchange.sendResponseHeaders(200, fileSize);
+            try (InputStream input = Files.newInputStream(badgeResourcePackFile.toPath());
+                 OutputStream output = exchange.getResponseBody()) {
+                input.transferTo(output);
+            }
+        } finally {
+            exchange.close();
         }
     }
 
@@ -191,11 +293,51 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         }
 
         try {
-            player.setResourcePack(BADGE_RESOURCE_PACK_ID, badgeResourcePackUrl, badgeResourcePackHash,
+            String url = badgeResourcePackUrl(player);
+            if (url == null) {
+                player.sendMessage(Component.text("Could not determine a reachable address for the badge pack. "
+                        + "Set resource-pack.host in config.yml.", NamedTextColor.RED));
+                return;
+            }
+            player.setResourcePack(BADGE_RESOURCE_PACK_ID, url, badgeResourcePackHash,
                     Component.text("Load the TitleKeeper badge pack to display badge icons."), false);
         } catch (RuntimeException exception) {
             getLogger().warning("Could not send the badge resource pack to " + player.getName() + ": " + exception.getMessage());
             player.sendMessage(Component.text("No resource pack is available. Badges will not be added.", NamedTextColor.RED));
+        }
+    }
+
+    private String badgeResourcePackUrl(Player player) {
+        String host = getConfig().getString("resource-pack.host", "").trim();
+        if (host.isEmpty()) host = playerConnectionHosts.get(player.getUniqueId());
+        if (host == null || host.isBlank()) host = getServer().getIp();
+        if (host == null || host.isBlank() || host.equals("0.0.0.0") || host.equals("::")) {
+            try {
+                host = InetAddress.getLocalHost().getHostAddress();
+            } catch (IOException exception) {
+                getLogger().warning("Could not determine the server address for the badge resource pack: "
+                        + exception.getMessage());
+                return null;
+            }
+        }
+
+        host = host.trim();
+        int forwardedData = host.indexOf('\0');
+        if (forwardedData >= 0) host = host.substring(0, forwardedData);
+        if (host.startsWith("[") && host.contains("]")) {
+            host = host.substring(1, host.indexOf(']'));
+        } else if (host.indexOf(':') == host.lastIndexOf(':') && host.contains(":")) {
+            String possiblePort = host.substring(host.lastIndexOf(':') + 1);
+            if (possiblePort.matches("\\d+")) host = host.substring(0, host.lastIndexOf(':'));
+        }
+        if (host.isBlank() || host.contains("/") || host.contains(" ")) return null;
+
+        try {
+            return new URI("http", null, host, badgePackHttpPort, "/titlekeeper-badges.zip", null, null)
+                    .toASCIIString();
+        } catch (URISyntaxException exception) {
+            getLogger().warning("Invalid resource-pack.host value '" + host + "': " + exception.getMessage());
+            return null;
         }
     }
 
@@ -412,6 +554,11 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     // --- EVENT LISTENERS ---
 
     @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerLogin(PlayerLoginEvent event) {
+        playerConnectionHosts.put(event.getPlayer().getUniqueId(), event.getHostname());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         requestBadgeResourcePack(event.getPlayer());
         refreshPlayer(event.getPlayer());
@@ -439,6 +586,7 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     public void onPlayerQuit(PlayerQuitEvent event) {
         attachments.remove(event.getPlayer().getUniqueId());
         badgePackLoaded.remove(event.getPlayer().getUniqueId());
+        playerConnectionHosts.remove(event.getPlayer().getUniqueId());
 
         try {
             ScoreboardManager manager = Bukkit.getScoreboardManager();

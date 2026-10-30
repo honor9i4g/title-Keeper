@@ -24,4 +24,6 @@ messages:
 
 resource-pack:
   file: "TitleKeeper-Badges-1.4.zip"
-  url: ""
+  port: 8080
+  # Optional public hostname/IP override when automatic address detection is not reachable by players.
+  host: ""

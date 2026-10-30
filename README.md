@@ -36,7 +36,7 @@ Follow these general steps to install Title-Keeper:
 
 ## Resource pack
 
-Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip`. Copy the ZIP into `plugins/TitleKeeper/` and set `resource-pack.url` in `plugins/TitleKeeper/config.yml` to its public HTTP(S) URL. TitleKeeper only adds badges after the server pack file is present and each player successfully loads it. Otherwise, the title remains, the badge is omitted, and the player is notified.
+Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip` and copy it into `plugins/TitleKeeper/`. TitleKeeper serves this local ZIP to players over its built-in HTTP server (port 8080 by default), so no separate hosting or resource-pack URL is required. Make sure players can reach the server on the configured pack port. If the server address cannot be detected automatically, set `resource-pack.host` in `plugins/TitleKeeper/config.yml` to the hostname or IP players use. Badges are added only after the pack is present and each player successfully loads it; otherwise the title remains, the badge is omitted, and the player is notified.
 
 ---
 
