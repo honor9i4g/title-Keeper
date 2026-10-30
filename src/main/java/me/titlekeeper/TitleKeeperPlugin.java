@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -66,6 +67,7 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
     private File playerPreferencesFile;
     private FileConfiguration playerPreferencesConfig;
     private File badgeResourcePackFile;
+    private File badgeResourcePackPortFile;
     private String badgeResourcePackHash;
     private volatile boolean badgeResourcePackAvailable;
     private HttpServer badgePackHttpServer;
@@ -178,6 +180,10 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
         badgeResourcePackHash = null;
         badgePackLoaded.clear();
 
+        Integer configuredPort = readBadgeResourcePackPort();
+        if (configuredPort == null) return;
+        int port = configuredPort;
+
         String fileName = getConfig().getString("resource-pack.file", "TitleKeeper-Badges-1.4.zip");
         Path pluginDirectory = getDataFolder().toPath().toAbsolutePath().normalize();
         Path packPath = pluginDirectory.resolve(fileName).normalize();
@@ -193,12 +199,7 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
             return;
         }
 
-        int port = getConfig().getInt("resource-pack.port", 8080);
-        if (port < 1 || port > 65535) {
-            getLogger().warning("resource-pack.port must be between 1 and 65535. Badges will not be added.");
-            return;
-        }
-
+        byte[] hash;
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
             try (InputStream input = Files.newInputStream(badgeResourcePackFile.toPath())) {
@@ -208,16 +209,68 @@ public final class TitleKeeperPlugin extends JavaPlugin implements Listener, Bas
                     digest.update(buffer, 0, bytesRead);
                 }
             }
-            badgeResourcePackHash = HexFormat.of().formatHex(digest.digest());
+            hash = digest.digest();
+        } catch (IOException exception) {
+            getLogger().warning("Could not read the local badge resource pack: " + exception.getMessage()
+                    + ". Badges will not be added.");
+            return;
+        } catch (NoSuchAlgorithmException exception) {
+            getLogger().warning("Could not calculate the badge resource-pack hash: " + exception.getMessage()
+                    + ". Badges will not be added.");
+            return;
+        }
+
+        badgeResourcePackHash = HexFormat.of().formatHex(hash);
+        try {
             startBadgePackHttpServer(port);
             badgeResourcePackAvailable = true;
         } catch (IOException exception) {
             stopBadgePackHttpServer();
-            getLogger().warning("Could not start local badge resource-pack delivery: " + exception.getMessage()
-                    + ". Badges will not be added.");
-        } catch (NoSuchAlgorithmException exception) {
-            getLogger().warning("Could not calculate the badge resource-pack hash: " + exception.getMessage()
-                    + ". Badges will not be added.");
+            if (exception instanceof BindException) {
+                getLogger().warning("Could not bind the badge resource-pack server to port " + port
+                        + ". Choose an available port in " + badgeResourcePackPortFile.getPath()
+                        + ". Details: " + exception.getMessage());
+            } else {
+                getLogger().warning("Could not start local badge resource-pack delivery on port " + port
+                        + ": " + exception.getMessage() + ". Badges will not be added.");
+            }
+        }
+    }
+
+    private Integer readBadgeResourcePackPort() {
+        Path pluginDirectory = getDataFolder().toPath().toAbsolutePath().normalize();
+        badgeResourcePackPortFile = pluginDirectory.resolve("resource-pack-port.txt").toFile();
+        try {
+            Files.createDirectories(pluginDirectory);
+            if (!badgeResourcePackPortFile.isFile()) {
+                int previousConfigPort = getConfig().getInt("resource-pack.port", 8080);
+                Files.writeString(
+                        badgeResourcePackPortFile.toPath(),
+                        previousConfigPort + System.lineSeparator(),
+                        StandardCharsets.UTF_8
+                );
+                getLogger().info("Created resource-pack-port.txt. Edit this file to choose the badge-pack HTTP port.");
+            }
+
+            String value = Files.readString(badgeResourcePackPortFile.toPath(), StandardCharsets.UTF_8).trim();
+            int port;
+            try {
+                port = Integer.parseInt(value);
+            } catch (NumberFormatException exception) {
+                getLogger().warning("resource-pack-port.txt must contain one port number from 1 to 65535. "
+                        + "Badges will not be added.");
+                return null;
+            }
+            if (port < 1 || port > 65535) {
+                getLogger().warning("Port in " + badgeResourcePackPortFile.getPath()
+                        + " must be between 1 and 65535. Badges will not be added.");
+                return null;
+            }
+            return port;
+        } catch (IOException exception) {
+            getLogger().warning("Could not read or create " + badgeResourcePackPortFile.getPath()
+                    + ": " + exception.getMessage() + ". Badges will not be added.");
+            return null;
         }
     }
 
