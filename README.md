@@ -1,4 +1,4 @@
-<img width="693" height="586" alt="logo" src="https://github.com/user-attachments/assets/b7ed4325-e5b6-488e-9831-31cc18deb1d4" />
+<img width="120" height="120" alt="logo" src="https://github.com/user-attachments/assets/4766d9a5-fc01-4421-9b08-f6acc6757354" />
 
 # 🎖️ Title-Keeper
 
