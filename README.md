@@ -1,3 +1,5 @@
+<img width="693" height="586" alt="logo" src="https://github.com/user-attachments/assets/b7ed4325-e5b6-488e-9831-31cc18deb1d4" />
+
 # 🎖️ Title-Keeper
 
 **Title-Keeper** is a Minecraft title and badge plugin project designed to make in-game titles more customizable and enjoyable. It provides built-in automatic titles, badge titles, custom title options, and colour customization features.
