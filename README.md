@@ -88,7 +88,7 @@ Run `gradlew resourcePackZip` to create `build/libs/TitleKeeper-Badges-1.4.zip` 
 - Added GUI pagination, configuration reload, and a decorative control panel.
 ## Beta Leavers 🎯
 Version 1.8.0 
-- Left with PAtches of button Settings 
+- Left with Patches of button Settings 
 - Added pagination for title lists and grants
 - Blocked item dragging
 - Improved title validation and save-error feedback.
